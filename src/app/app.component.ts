@@ -1,7 +1,7 @@
 import { Component, HostListener, OnInit } from '@angular/core';
+import { Subject } from 'rxjs';
+import { combineAll, finalize, map, timeout } from 'rxjs/operators';
 
-import { Subject, Subscription } from 'rxjs';
-import { combineAll, map, first, delay } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -39,24 +39,13 @@ export class AppComponent implements OnInit {
 
   private subscribeToKeys(): void {
     this.$eanKeys = new Subject<string>();
-    this.setupBufferTimeout(
-      this.$eanKeys.pipe(
-        combineAll(),
-        map(res => res.reduce((acc, cur) => acc + cur, ''))
-      ).subscribe(res => {
-        this.$ean.next(res);
-        this.subscribeToKeys();
-      })
-    );
-  }
-
-  setupBufferTimeout(subs: Subscription) {
     this.$eanKeys.pipe(
-      first(),
-      delay(1000)
-    ).subscribe(() => {
-      subs.unsubscribe();
-      this.subscribeToKeys();
-    });
+      timeout(1000),
+      combineAll(),
+      map(res => res.reduce((acc, cur) => acc + cur, '')),
+      finalize(() => this.subscribeToKeys())
+    ).subscribe(res => {
+      this.$ean.next(res);
+    }, err => console.log('subscribeToKeys', err));
   }
 }
